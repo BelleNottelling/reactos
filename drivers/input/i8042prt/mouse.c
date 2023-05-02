@@ -6,7 +6,7 @@
  * PROGRAMMERS: Copyright Victor Kirhenshtein (sauros@iname.com)
                 Copyright Jason Filby (jasonfilby@yahoo.com)
                 Copyright Martijn Vernooij (o112w8r02@sneakemail.com)
-                Copyright 2006-2007 Hervé Poussineau (hpoussin@reactos.org)
+                Copyright 2006-2007 Hervï¿½ Poussineau (hpoussin@reactos.org)
                 Copyright 2008 Colin Finck (mail@colinfinck.de)
  */
 
@@ -641,17 +641,21 @@ i8042MouResetIsr(
 	if (MouseIdle == DeviceExtension->MouseState)
 	{
 		/* Magic packet value that indicates a reset */
-		if (0xAA == Value)
+		if (MOUSE_BAT_COMPLETE == Value)
 		{
 			WARN_(I8042PRT, "Hot plugged mouse!\n");
 			DeviceExtension->MouseState = MouseResetting;
 			DeviceExtension->MouseResetState = ExpectingReset;
 		}
 		else
+		{
 			return FALSE;
+		}
 	}
-	else if (MouseResetting != DeviceExtension->MouseState)
+	else if(MouseResetting != DeviceExtension->MouseState)
+	{
 		return FALSE;
+	}
 
 	DeviceExtension->MouseTimeoutState = TimeoutStart;
 	PortDeviceExtension = DeviceExtension->Common.PortDeviceExtension;
@@ -665,8 +669,8 @@ i8042MouResetIsr(
 				return TRUE;
 			}
 
-			/* First, 0xFF is sent. The mouse is supposed to say AA00 if ok, FC00 if not. */
-			if (0xAA == Value)
+			/* First, 0xFF is sent. The mouse is supposed to say AA00 if it passed it's Basic Assurance Test (BAT), FC00 if not. */
+			if (MOUSE_BAT_COMPLETE == Value)
 			{
 				DeviceExtension->MouseResetState++;
 			}
@@ -684,11 +688,12 @@ i8042MouResetIsr(
 				return TRUE;
 			}
 
+			// 0x00 is expected here to distinguish the mouse from a keyboard.
 			if (0x00 == Value)
 			{
 				DeviceExtension->MouseResetState++;
 				DeviceExtension->MouseType = GenericPS2;
-				DeviceExtension->MouseHook.IsrWritePort(DeviceExtension->MouseHook.CallContext, 0xF2);
+				DeviceExtension->MouseHook.IsrWritePort(DeviceExtension->MouseHook.CallContext, MOU_CMD_GET_ID);
 			}
 			else
 			{
@@ -727,24 +732,24 @@ i8042MouResetIsr(
 						MOUSE_I8042_HARDWARE;
 			}
 			DeviceExtension->MouseResetState++;
-			DeviceExtension->MouseHook.IsrWritePort(DeviceExtension->MouseHook.CallContext, 0xE8);
+			DeviceExtension->MouseHook.IsrWritePort(DeviceExtension->MouseHook.CallContext, MOU_CMD_SET_RESOLUTION);
 			return TRUE;
 		case ExpectingSetResolutionDefaultACK:
 			DeviceExtension->MouseResetState++;
-			DeviceExtension->MouseHook.IsrWritePort(DeviceExtension->MouseHook.CallContext, 0x00);
+			DeviceExtension->MouseHook.IsrWritePort(DeviceExtension->MouseHook.CallContext, 0x00); //TODO: This seems wrong? Looking at the docs I have available, the mouse will send us 0x00, but we should never be sending it 0x00.
 			return TRUE;
 		case ExpectingSetResolutionDefaultValueACK:
 			DeviceExtension->MouseResetState = ExpectingSetScaling1to1ACK;
-			DeviceExtension->MouseHook.IsrWritePort(DeviceExtension->MouseHook.CallContext, 0xE6);
+			DeviceExtension->MouseHook.IsrWritePort(DeviceExtension->MouseHook.CallContext, MOU_CMD_SET_SCALE_1X);
 			return TRUE;
 		case ExpectingSetScaling1to1ACK:
 		case ExpectingSetScaling1to1ACK2:
 			DeviceExtension->MouseResetState++;
-			DeviceExtension->MouseHook.IsrWritePort(DeviceExtension->MouseHook.CallContext, 0xE6);
+			DeviceExtension->MouseHook.IsrWritePort(DeviceExtension->MouseHook.CallContext, MOU_CMD_SET_SCALE_1X);
 			return TRUE;
 		case ExpectingSetScaling1to1ACK3:
 			DeviceExtension->MouseResetState++;
-			DeviceExtension->MouseHook.IsrWritePort(DeviceExtension->MouseHook.CallContext, 0xE9);
+			DeviceExtension->MouseHook.IsrWritePort(DeviceExtension->MouseHook.CallContext, MOU_CMD_GET_STATUS);
 			return TRUE;
 		case ExpectingReadMouseStatusACK:
 			DeviceExtension->MouseResetState++;
@@ -770,7 +775,7 @@ i8042MouResetIsr(
 				DeviceExtension->MouseAttributes.NumberOfButtons =
 					DeviceExtension->MouseLogiBuffer[1];
 				DeviceExtension->MouseType = Ps2pp;
-				DeviceExtension->MouseHook.IsrWritePort(DeviceExtension->MouseHook.CallContext, 0xF3);
+				DeviceExtension->MouseHook.IsrWritePort(DeviceExtension->MouseHook.CallContext, MOU_CMD_SET_RATE);
 				DeviceExtension->MouseResetState = ExpectingSetSamplingRateACK;
 				/* TODO: Go through EnableWheel and Enable5Buttons */
 				return TRUE;
@@ -779,28 +784,28 @@ i8042MouResetIsr(
 			i8042MouResetIsr(DeviceExtension, Status, Value);
 			return TRUE;
 		case EnableWheel:
-			DeviceExtension->MouseHook.IsrWritePort(DeviceExtension->MouseHook.CallContext, 0xF3);
+			DeviceExtension->MouseHook.IsrWritePort(DeviceExtension->MouseHook.CallContext, MOU_CMD_SET_RATE);
 			DeviceExtension->MouseResetState = 1001;
 			return TRUE;
 		case 1001:
-			DeviceExtension->MouseHook.IsrWritePort(DeviceExtension->MouseHook.CallContext, 0xC8);
+			DeviceExtension->MouseHook.IsrWritePort(DeviceExtension->MouseHook.CallContext, 0xC8); //TODO: Check this. My docs don't mention this command at all.
 			DeviceExtension->MouseResetState++;
 			return TRUE;
 		case 1002:
 		case 1004:
-			DeviceExtension->MouseHook.IsrWritePort(DeviceExtension->MouseHook.CallContext, 0xF3);
+			DeviceExtension->MouseHook.IsrWritePort(DeviceExtension->MouseHook.CallContext, MOU_CMD_SET_RATE);
 			DeviceExtension->MouseResetState++;
 			return TRUE;
 		case 1003:
-			DeviceExtension->MouseHook.IsrWritePort(DeviceExtension->MouseHook.CallContext, 0x64);
+			DeviceExtension->MouseHook.IsrWritePort(DeviceExtension->MouseHook.CallContext, 0x64); //TODO: Check this. My docs don't mention this command at all.
 			DeviceExtension->MouseResetState++;
 			return TRUE;
 		case 1005:
-			DeviceExtension->MouseHook.IsrWritePort(DeviceExtension->MouseHook.CallContext, 0x50);
+			DeviceExtension->MouseHook.IsrWritePort(DeviceExtension->MouseHook.CallContext, 0x50); //TODO: Check this. My docs don't mention this command at all.
 			DeviceExtension->MouseResetState++;
 			return TRUE;
 		case 1006:
-			DeviceExtension->MouseHook.IsrWritePort(DeviceExtension->MouseHook.CallContext, 0xF2);
+			DeviceExtension->MouseHook.IsrWritePort(DeviceExtension->MouseHook.CallContext, MOU_CMD_GET_ID);
 			DeviceExtension->MouseResetState++;
 			return TRUE;
 		case 1007:
@@ -820,33 +825,34 @@ i8042MouResetIsr(
 			else
 			{
 				/* Just set the default settings and be done */
-				DeviceExtension->MouseHook.IsrWritePort(DeviceExtension->MouseHook.CallContext, 0xF3);
+				DeviceExtension->MouseHook.IsrWritePort(DeviceExtension->MouseHook.CallContext, MOU_CMD_SET_RATE);
 				DeviceExtension->MouseResetState = ExpectingSetSamplingRateACK;
 			}
 			return TRUE;
 		case Enable5Buttons:
-			DeviceExtension->MouseHook.IsrWritePort(DeviceExtension->MouseHook.CallContext, 0xF3);
+			DeviceExtension->MouseHook.IsrWritePort(DeviceExtension->MouseHook.CallContext, MOU_CMD_SET_RATE);
 			DeviceExtension->MouseResetState = 1021;
 			return TRUE;
 		case 1022:
 		case 1024:
-			DeviceExtension->MouseHook.IsrWritePort(DeviceExtension->MouseHook.CallContext, 0xF3);
+			DeviceExtension->MouseHook.IsrWritePort(DeviceExtension->MouseHook.CallContext, MOU_CMD_SET_RATE);
 			DeviceExtension->MouseResetState++;
 			return TRUE;
 		case 1021:
 		case 1023:
-			DeviceExtension->MouseHook.IsrWritePort(DeviceExtension->MouseHook.CallContext, 0xC8);
+			DeviceExtension->MouseHook.IsrWritePort(DeviceExtension->MouseHook.CallContext, 0xC8); //TODO: Check this. My docs don't mention this command at all.
 			DeviceExtension->MouseResetState++;
 			return TRUE;
 		case 1025:
-			DeviceExtension->MouseHook.IsrWritePort(DeviceExtension->MouseHook.CallContext, 0x50);
+			DeviceExtension->MouseHook.IsrWritePort(DeviceExtension->MouseHook.CallContext, 0x50); //TODO: Check this. My docs don't mention this command at all.
 			DeviceExtension->MouseResetState++;
 			return TRUE;
 		case 1026:
-			DeviceExtension->MouseHook.IsrWritePort(DeviceExtension->MouseHook.CallContext, 0xF2);
+			DeviceExtension->MouseHook.IsrWritePort(DeviceExtension->MouseHook.CallContext, MOU_CMD_GET_ID);
 			DeviceExtension->MouseResetState++;
 			return TRUE;
 		case 1027:
+			// Intellimouse will respond with 0x04 as it's ID.
 			if (0x04 == Value)
 			{
 				DeviceExtension->MouseAttributes.NumberOfButtons = 5;
@@ -854,7 +860,7 @@ i8042MouResetIsr(
 					WHEELMOUSE_I8042_HARDWARE;
 				DeviceExtension->MouseType = IntellimouseExplorer;
 			}
-			DeviceExtension->MouseHook.IsrWritePort(DeviceExtension->MouseHook.CallContext, 0xF3);
+			DeviceExtension->MouseHook.IsrWritePort(DeviceExtension->MouseHook.CallContext, MOU_CMD_SET_RATE);
 			DeviceExtension->MouseResetState = ExpectingSetSamplingRateACK;
 			return TRUE;
 		case ExpectingSetSamplingRateACK:
@@ -866,13 +872,13 @@ i8042MouResetIsr(
 		case ExpectingSetSamplingRateValueACK:
 			if (MOUSE_NACK == Value)
 			{
-				DeviceExtension->MouseHook.IsrWritePort(DeviceExtension->MouseHook.CallContext, 0x3C);
+				DeviceExtension->MouseHook.IsrWritePort(DeviceExtension->MouseHook.CallContext, 0x3C); //TODO: Check this. My docs don't mention this command at all.
 				DeviceExtension->MouseAttributes.SampleRate = (USHORT)PortDeviceExtension->Settings.SampleRate;
 				DeviceExtension->MouseResetState = 1040;
 				return TRUE;
 			}
 		case 1040:  /* Fallthrough */
-			DeviceExtension->MouseHook.IsrWritePort(DeviceExtension->MouseHook.CallContext, 0xE8);
+			DeviceExtension->MouseHook.IsrWritePort(DeviceExtension->MouseHook.CallContext, MOU_CMD_SET_RESOLUTION); 
 			DeviceExtension->MouseResetState = ExpectingFinalResolutionACK;
 			return TRUE;
 		case ExpectingFinalResolutionACK:
@@ -884,7 +890,7 @@ i8042MouResetIsr(
 			DeviceExtension->MouseResetState = ExpectingFinalResolutionValueACK;
 			return TRUE;
 		case ExpectingFinalResolutionValueACK:
-			DeviceExtension->MouseHook.IsrWritePort(DeviceExtension->MouseHook.CallContext, 0xF4);
+			DeviceExtension->MouseHook.IsrWritePort(DeviceExtension->MouseHook.CallContext, MOU_ENAB);
 			DeviceExtension->MouseResetState = ExpectingEnableACK;
 			return TRUE;
 		case ExpectingEnableACK:

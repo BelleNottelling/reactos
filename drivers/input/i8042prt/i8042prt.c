@@ -6,7 +6,7 @@
  * PROGRAMMERS: Copyright Victor Kirhenshtein (sauros@iname.com)
                 Copyright Jason Filby (jasonfilby@yahoo.com)
                 Copyright Martijn Vernooij (o112w8r02@sneakemail.com)
-                Copyright 2006-2007 Hervé Poussineau (hpoussin@reactos.org)
+                Copyright 2006-2007 Hervï¿½ Poussineau (hpoussin@reactos.org)
  */
 
 /* INCLUDES ******************************************************************/
@@ -529,8 +529,6 @@ DriverEntry(
 	DriverObject->MajorFunction[IRP_MJ_POWER]   = i8042Power;
 	DriverObject->MajorFunction[IRP_MJ_SYSTEM_CONTROL] = i8042SystemControl;
 	DriverObject->MajorFunction[IRP_MJ_PNP]     = i8042Pnp;
-
-    i8042InitializeHwHacks();
 
 	return STATUS_SUCCESS;
 }

@@ -273,15 +273,31 @@ typedef struct _I8042_HOOK_WORKITEM
 
 /*-----------------------------------------------------
  * Mouse commands
+ * Reference: https://isdaman.com/alsos/hardware/mouse/ps2interface.htm
  * --------------------------------------------------*/
 
-#define MOU_ENAB           0xF4
-#define MOU_CMD_RESET      0xFF
+#define MOU_CMD_DISABLE_REPORT 0xF5
+#define MOU_CMD_GET_ID         0xF2
+#define MOU_CMD_READ           0xEB
+#define MOU_CMD_RESEND         0xFE
+#define MOU_CMD_RESET          0xFF
+#define MOU_CMD_RESET_WRAP     0xEC
+#define MOU_CMD_SET_DEFAULTS   0xF6
+#define MOU_CMD_SET_RATE       0xF3
+#define MOU_CMD_SET_REMOTE     0xF0
+#define MOU_CMD_SET_RESOLUTION 0xE8
+#define MOU_CMD_SET_SCALE_1X   0xE6
+#define MOU_CMD_SET_SCALE_2X   0xE7
+#define MOU_CMD_SET_STREAM     0xEA
+#define MOU_CMD_SET_WRAP       0xEE
+#define MOU_CMD_GET_STATUS     0xE9
+#define MOU_ENAB               0xF4
 
 /*-----------------------------------------------------
  * Mouse responses
  * --------------------------------------------------*/
 
+#define MOUSE_BAT_COMPLETE 0xAA
 #define MOUSE_ACK          0xFA
 #define MOUSE_ERROR        0xFC
 #define MOUSE_NACK         0xFE
@@ -440,20 +456,5 @@ NTSTATUS
 ReadRegistryEntries(
 	IN PUNICODE_STRING RegistryPath,
 	OUT PI8042_SETTINGS Settings);
-
-/* hwhacks.c */
-
-VOID
-NTAPI
-i8042InitializeHwHacks(
-    VOID);
-
-enum _FLAGS
-{
-    FL_NOLOOP = 0x01,
-    FL_INITHACK = 0x02,
-};
-
-extern ULONG i8042HwFlags;
 
 #endif /* _I8042PRT_PCH_ */

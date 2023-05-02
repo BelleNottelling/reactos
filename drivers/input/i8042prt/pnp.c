@@ -3,7 +3,7 @@
  * LICENSE:     GPL - See COPYING in the top level directory
  * FILE:        drivers/input/i8042prt/pnp.c
  * PURPOSE:     IRP_MJ_PNP operations
- * PROGRAMMERS: Copyright 2006-2007 Hervé Poussineau (hpoussin@reactos.org)
+ * PROGRAMMERS: Copyright 2006-2007 Hervï¿½ Poussineau (hpoussin@reactos.org)
  *              Copyright 2008 Colin Finck (mail@colinfinck.de)
  */
 
@@ -483,13 +483,6 @@ StartProcedure(
 
         /* Start the mouse */
         Irql = KeAcquireInterruptSpinLock(DeviceExtension->HighestDIRQLInterrupt);
-        /* HACK: the mouse has already been reset in i8042DetectMouse. This second
-           reset prevents some touchpads/mice from working (Dell D531, D600).
-           See CORE-6901 */
-        if (!(i8042HwFlags & FL_INITHACK))
-        {
-            i8042IsrWritePort(DeviceExtension, MOU_CMD_RESET, CTRL_WRITE_MOUSE);
-        }
         KeReleaseInterruptSpinLock(DeviceExtension->HighestDIRQLInterrupt, Irql);
     }
 
